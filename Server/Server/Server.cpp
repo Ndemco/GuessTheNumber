@@ -30,6 +30,10 @@ wchar_t* convertStringToWideString(std::string ordinaryString)
 	return wideBuffer;
 }
 
+/**********************************************************************
+* TODO: Have main() handle the shared memory and (possibly?) the event
+***********************************************************************/
+
 int main()
 {
 	// This variable will be set when the Event is set
@@ -120,8 +124,6 @@ int main()
 			// Convert player mailslot name to wide string
 			std::wstring w_player_mailslot_name(temp);
 
-			delete[] temp;
-
 			// Convert player mailslot name to LPCWSTR
 			LPCWSTR clientMailslotName = w_player_mailslot_name.c_str();
 
@@ -148,6 +150,7 @@ int main()
 			}
 
 			// We successfully opened the Mailslot. Send some messages!
+			delete[] temp;
 
 			//Index in vector of player's info will be their unique ID.
 			sprintf_s(writeBuffer, &index);
@@ -327,6 +330,10 @@ int main()
 			return 1;
 		}
 
+		/* ********************************************************************************************
+		* TODO: This is a very tight loop. It will check the moribund variable many thousands of times
+		* per second. Use a condition variable to allow the thread to sleep until needed
+		**********************************************************************************************/
 		bool eventSet = false;
 		while (!eventSet)
 		{
@@ -391,7 +398,7 @@ int main()
 			}
 		}
 		return 0;
-		});
+	});
 
 	t1.join();
 	t2.join();

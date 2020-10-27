@@ -307,9 +307,13 @@ int main(int argc, char* argv[])
 			char did_i_win = readBuffer[0];
 
 			if (did_i_win == uniqueID)
+			{
 				printf("I won!");
+			}
 			else
+			{
 				printf("I lost :[");
+			}
 		}
 		else
 			printf("An error occurred waiting for the event: %d\n", GetLastError());
@@ -317,7 +321,7 @@ int main(int argc, char* argv[])
 		CloseHandle(hEvent);
 
 		return 0;
-		});
+	});
 
 	t1.join();
 	t2.join();
