@@ -1,4 +1,5 @@
 // Standard includes
+#define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
 #include <stdio.h>
 #include <iostream>
@@ -7,36 +8,15 @@
 #include <thread>
 #include <vector>
 #include <chrono>
-#include <mutex>
+
+#include "Utils.h"
+#include "Mailslot.h"
 #include "../../Shared/SharedMemory.h"
-
-typedef std::pair<std::string, std::string> pair_of_strings;
-
-wchar_t* convertStringToWideString(std::string ordinaryString)
-{
-	// Compute the length of the original string and 
-	// add 1 for the terminating '\0'
-	int slength = (int)ordinaryString.length() + 1;
-
-	// Compute the length of string in "wide" characters
-	int wideLen = MultiByteToWideChar(CP_ACP, 0, ordinaryString.c_str(), slength, 0, 0);
-
-	// Allocate a buffer to hold the wide characters
-	wchar_t* wideBuffer = new wchar_t[wideLen];
-
-	// Do the actual conversion
-	MultiByteToWideChar(CP_ACP, 0, ordinaryString.c_str(), slength, wideBuffer, wideLen);
-
-	// That's it.
-	return wideBuffer;
-}
 
 int main()
 {
 	// This variable will be set when the Event is set
 	volatile bool moribund = false;
-
-	std::mutex mtx;
 
 	// ID of the winner.
 	char winnerID = 0;
@@ -47,132 +27,10 @@ int main()
 	unsigned char num = rand() % 256;
 	printf("Winning number is %d\n", num);
 
-	// Array of pairs to store player mailslot name and player name (respectively)
-	std::vector<pair_of_strings> playerList;
-
+	Mailslot mailslot;
 	// This thread does all pre-event-set mailslot work
-	std::thread t1([&num, &moribund, &playerList, &mtx]() {
-		// Define our Mailslot
-		LPCWSTR szMailslot = L"\\\\.\\mailslot\\Server";
-
-		// Define a buffer for holding messages
-		constexpr auto BUFFER_LENGTH = 1024;
-		char readBuffer[BUFFER_LENGTH] = { 0 };
-		DWORD bytesRead;
-
-		// Create the Mailslot
-		HANDLE srvMailslot = CreateMailslot(
-			szMailslot,		          // The name of our Mailslot
-			BUFFER_LENGTH,            // The size of the input buffer
-			MAILSLOT_WAIT_FOREVER,    // Wait forever for new mail
-			NULL					  // Use the default security attributes
-		);
-
-		// Check for errors creating Mailslot
-		if (srvMailslot == INVALID_HANDLE_VALUE)
-		{
-			printf("There was error creating the Mailslot: %d\n", GetLastError());
-			return 1;
-		}
-
-		// Will be used to increment player_list and as the player's unique ID byte.
-		char index = 0;
-
-		// Wait for a message
-		printf("Mailslot open and waiting for registrations:\n");
-		while (!moribund)
-		{
-			bool readResult = ReadFile(srvMailslot, readBuffer, BUFFER_LENGTH, &bytesRead, NULL);  // No overlapping I/O
-			if (!readResult || (bytesRead <= 0))
-			{
-				printf("An error occured reading the message: %d\n", GetLastError());
-				CloseHandle(srvMailslot);
-				return 1;
-			}
-
-			// Convert buffer to std::string
-			std::string playerInfo(readBuffer);
-
-			// Find the space to separate the mailslot name and client name
-			std::size_t tok = playerInfo.find(' ');
-
-			// Grab the mailslot name
-			std::string uniqueName = playerInfo.substr(0, tok);
-
-			// Grab the client name
-			std::string playerName = playerInfo.substr(tok + 1);
-			std::cout << uniqueName << " has registered." << '\n';
-
-			// Define client Mailslot
-			LPCWSTR clientMailslotBeginning = L"\\\\.\\mailslot\\";
-
-			std::string mailslot_beginning("\\\\.\\mailslot\\");
-
-			// Convert unique name to string for storage in vector
-			std::string s_unique_name(uniqueName);
-
-			// Full mailslot name as a string
-			std::string player_mailslot_name = mailslot_beginning + s_unique_name;
-
-			std::unique_lock<std::mutex> lock(mtx);
-			// Push full mailslot name and player name to vector of pairs
-			std::size_t test = playerList.size();
-			playerList.push_back({ player_mailslot_name, playerName });
-			test = playerList.size();
-			lock.unlock();
-
-			// Conver player mailslot name to wide c-string
-			wchar_t* temp = convertStringToWideString(player_mailslot_name);
-
-			// Convert player mailslot name to wide string
-			std::wstring w_player_mailslot_name(temp);
-
-			// Convert player mailslot name to LPCWSTR
-			LPCWSTR clientMailslotName = w_player_mailslot_name.c_str();
-
-			// Define a buffer for writing messages
-			char writeBuffer[BUFFER_LENGTH] = { 0 };
-			DWORD bytesWritten;
-			bool writeResult;
-
-			// Open the Mailslot
-			HANDLE clientMailslot = CreateFile(
-				clientMailslotName,			// This is the name of our Mailslot
-				GENERIC_WRITE,				// We need to be able to write to it.
-				FILE_SHARE_READ,			// This is required of all Mailslots
-				NULL,						// Use the default security attributes
-				OPEN_EXISTING,				// Well, duh!
-				FILE_ATTRIBUTE_NORMAL,		// Use the normal file attributes
-				NULL						// There is no template file
-			);
-
-			if (clientMailslot == INVALID_HANDLE_VALUE)
-			{
-				printf("There was an error opening the Mailslot: %d\n", GetLastError());
-				return 1;
-			}
-
-			// We successfully opened the Mailslot. Send some messages!
-			delete[] temp;
-
-			//Index in vector of player's info will be their unique ID.
-			sprintf_s(writeBuffer, &index);
-			size_t bytesToWrite = 1;
-			writeResult = WriteFile(clientMailslot, writeBuffer, bytesToWrite, &bytesWritten, NULL);
-
-			if (!writeResult || (bytesWritten != bytesToWrite))
-			{
-				printf("An error occured sending message %s: error code %d\n", writeBuffer, GetLastError());
-				CloseHandle(clientMailslot);
-			}
-			else
-				CloseHandle(clientMailslot);
-
-			index++;
-		}
-
-		CloseHandle(srvMailslot);
-		return 0;
+	std::thread t1([&moribund, &mailslot]() {
+		mailslot.run(moribund);
 	});
 
 	// Set up security descriptor with a null access control list.
@@ -200,7 +58,7 @@ int main()
 		&sa,	// Use our security attributes structure
 		true,	// Manual-reset mode
 		false,	// Initially unsignalled
-		TEXT("SampleEvent")
+		TEXT("ChickenDinner")
 	);
 	if (hEvent == INVALID_HANDLE_VALUE)
 	{
@@ -313,13 +171,10 @@ int main()
 						// Iterate through vector first element of vector to get
 						// mailslot name of all players, then write the winning ID
 						// to their mailslot
-						std::unique_lock<std::mutex> lock(mtx);
-						std::size_t numPlayers = playerList.size();
+						std::size_t numPlayers = mailslot.numPlayers();
 						for (std::size_t i = 0; i < numPlayers; i++)
 						{
-							std::string mailslotName = playerList[i].first;
-							lock.unlock();
-							std::wstring temp(convertStringToWideString(mailslotName));
+							std::string mailslotName = mailslot.getPlayerList()[i].first;
 							LPCWSTR w_mailslotName = convertStringToWideString(mailslotName);
 							// Open the Mailslot
 							HANDLE clientMailslot = CreateFile(
