@@ -175,6 +175,7 @@ int main()
 						for (std::size_t i = 0; i < numPlayers; i++)
 						{
 							std::string mailslotName = mailslot.getPlayerList()[i].first;
+							//std::cout << mailslotName;
 							LPCWSTR w_mailslotName = convertStringToWideString(mailslotName);
 							// Open the Mailslot
 							HANDLE clientMailslot = CreateFile(
