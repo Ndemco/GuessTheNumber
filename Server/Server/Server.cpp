@@ -9,9 +9,10 @@
 #include <vector>
 #include <chrono>
 
-#include "Utils.h"
+#include "Event.h"
 #include "Mailslot.h"
-#include "../../Shared/SharedMemory.h"
+#include "../../Shared/CircularBuffer.h"
+#include "../../Shared/Utils.h"
 
 int main()
 {
@@ -29,42 +30,12 @@ int main()
 
 	Mailslot mailslot;
 	// This thread does all pre-event-set mailslot work
-	std::thread t1([&moribund, &mailslot]() {
+	std::thread mailslotThread([&moribund, &mailslot]() {
 		mailslot.run(moribund);
 	});
 
-	// Set up security descriptor with a null access control list.
-	// This will allow any other process to access this event.
-	PSECURITY_DESCRIPTOR pSD
-		= (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
-	InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION);
-	SetSecurityDescriptorDacl(pSD, // Our security descriptor
-		TRUE,                      // Is the ACL present?
-		NULL,                      // The ACL, null in this case
-		FALSE);                    // The ACL is set by hand.
-
-	// Now set up a security attributes structure and ...
-	SECURITY_ATTRIBUTES sa = { 0 };
-	sa.nLength = sizeof(sa);
-
-	// ... set it up to use security descriptor.
-	sa.lpSecurityDescriptor = pSD;
-	sa.bInheritHandle = FALSE;
-
-	// Create our event. We create it as a manual reset event.
-	// An auto reset event is unsignalled after the first process
-	// waiting for it processes it.
-	HANDLE hEvent = CreateEvent(
-		&sa,	// Use our security attributes structure
-		true,	// Manual-reset mode
-		false,	// Initially unsignalled
-		TEXT("ChickenDinner")
-	);
-	if (hEvent == INVALID_HANDLE_VALUE)
-	{
-		printf("Creating the event failed!: %d\n", GetLastError());
-		return 1;
-	}
+	Event event(L"ChickenDinner");
+	HANDLE hEvent = event.run();
 
 	// Create the semaphore we will use to control access to the circular buffer.
 	HANDLE hSemaphore = CreateSemaphore(
@@ -88,6 +59,7 @@ int main()
 		SHARED_MEMORY_SIZE,				// Size of the shared memory
 		TEXT("ShareMemoryBuffer")		// Name of our shared memory buffer
 	);
+	
 	if (hMemory == INVALID_HANDLE_VALUE || hMemory == NULL)
 	{
 		printf("An error occurred created the shared memory buffer:%d\n", GetLastError());
@@ -175,7 +147,7 @@ int main()
 						for (std::size_t i = 0; i < numPlayers; i++)
 						{
 							std::string mailslotName = mailslot.getPlayerList()[i].first;
-							//std::cout << mailslotName;
+
 							LPCWSTR w_mailslotName = convertStringToWideString(mailslotName);
 							// Open the Mailslot
 							HANDLE clientMailslot = CreateFile(
@@ -220,6 +192,7 @@ int main()
 			else
 			{
 				// Nothing available. Buffer is empty.
+				// This code block is not needed and only here for readability
 			}
 
 			// Release the semaphore so another process may use it.
@@ -240,7 +213,7 @@ int main()
 	UnmapViewOfFile(pBuffer);
 	CloseHandle(hMemory);
 
-	t1.join();
+	mailslotThread.join();
 
 	return 0;
 }

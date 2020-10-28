@@ -9,28 +9,10 @@
 #include <string>
 #include <stdlib.h>
 #include <chrono>
-#include "../../Shared/SharedMemory.h"
+#include "../../Shared/CircularBuffer.h"
+#include "../../Shared/Utils.h"
 
 constexpr auto BUFFER_LENGTH = 1024;
-
-wchar_t* convertStringToWideString(std::string ordinaryString)
-{
-	// Compute the length of the original string and 
-	// add 1 for the terminating '\0'
-	int slength = (int)ordinaryString.length() + 1;
-
-	// Compute the length of string in "wide" characters
-	int wideLen = MultiByteToWideChar(CP_ACP, 0, ordinaryString.c_str(), slength, 0, 0);
-
-	// Allocate a buffer to hold the wide characters
-	wchar_t* wideBuffer = new wchar_t[wideLen];
-
-	// Do the actual conversion
-	MultiByteToWideChar(CP_ACP, 0, ordinaryString.c_str(), slength, wideBuffer, wideLen);
-
-	// That's it.
-	return wideBuffer;
-}
 
 // Here we go!
 int main(int argc, char* argv[])
@@ -273,7 +255,7 @@ int main(int argc, char* argv[])
 			EVENT_ALL_ACCESS |
 			EVENT_MODIFY_STATE,
 			false,
-			TEXT("SampleEvent")
+			TEXT("ChickenDinner")
 		);
 
 		if (hEvent == INVALID_HANDLE_VALUE || hEvent == 0)
