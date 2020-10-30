@@ -1,5 +1,5 @@
-#ifndef SHAREDMEMORY_H
-#define SHAREDMEMORY_H
+#ifndef CIRCULARBUFFER_H
+#define CIRCULARBUFFER_H
 
 constexpr auto SHARED_MEMORY_SIZE = 103;
 

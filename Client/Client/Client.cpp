@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
 		}
 
 		// Open the Shared Memory object. It must already have been created.
-		HANDLE hMemory = OpenFileMapping(FILE_MAP_ALL_ACCESS, false, TEXT("ShareMemoryBuffer"));
+		HANDLE hMemory = OpenFileMapping(FILE_MAP_ALL_ACCESS, false, TEXT("SharedMemoryBuffer"));
 		if (hMemory == INVALID_HANDLE_VALUE || hMemory == NULL)
 		{
 			printf("An error occurred created the shared memory buffer:%d\n", GetLastError());
