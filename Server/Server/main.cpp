@@ -21,7 +21,7 @@ int main()
 	std::srand(static_cast<unsigned>(std::time(0)));
 	// mod 256 ensures type safety
 	unsigned char num = std::rand() % 256;
-	std::cout << "Winning number is " << num << '\n';
+	std::cout << "Winning number is " << static_cast<unsigned>(num) << '\n';
 
 	Mailslot mailslot;
 	// This thread does all pre-event-set mailslot work

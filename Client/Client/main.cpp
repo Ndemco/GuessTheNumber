@@ -150,15 +150,20 @@ int main(int argc, char* argv[])
 			printf("Guess a number between 0 and 255: ");
 			std::cin >> guess;
 
-			//This ensures type safety for when setting unsigned char datum == guess
+			//This ensures cin does not have irrecoverable error is g type safety for when setting unsigned char datum == guess
 			while (guess < 0 || guess > 255 || (std::cin.fail() && !(std::cin.bad() || std::cin.eof())))
 			{
-				if (std::cin.fail())
+				if (guess < 0 || guess > 255)
+				{
+					std::cout << "Number not in range: Guess a number between 0 and 255: ";
+				}
+				else if (std::cin.fail())
 				{
 					std::cin.clear();
 					std::cin.ignore(1000, '\n');
+					std::cout << "Unreadable value, Guess a number between 0 and 255: ";
 				}
-				printf("Your guess is not in range, please guess a number between 0 and 255: \n");
+				
 				std::cin >> guess;
 			}
 
