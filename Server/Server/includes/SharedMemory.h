@@ -14,7 +14,7 @@ private:
 		PAGE_READWRITE,					// We need both read and write access
 		0,								// Maximum Object size, use default
 		SHARED_MEMORY_SIZE,				// Size of the shared memory
-		TEXT("SharedMemoryBuffer")							// Name of our shared memory buffer
+		TEXT("SharedMemoryBuffer")		// Name of our shared memory buffer
 	);
 
 	// Create the memory mapping, ...

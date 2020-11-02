@@ -9,6 +9,7 @@
 #include <string>
 #include <stdlib.h>
 #include <chrono>
+#include "Player.h"
 #include "../../Shared/CircularBuffer.h"
 #include "../../Shared/Utils.h"
 
@@ -17,54 +18,31 @@ constexpr auto BUFFER_LENGTH = 1024;
 // Here we go!
 int main(int argc, char* argv[])
 {
-	// Player's unique ID given by ther server
-	char uniqueID = 0;
-
-	//Player's name
-	char* playerName = argv[1];
-
-	//Convert name to std::string for convertStringToWideString() method
-	std::string name(playerName);
-
-	// Time now
-	const auto time_now = std::chrono::system_clock::now();
-
-	// Time since epoch as a wide string
-	const std::wstring w_time_since_epoch = std::to_wstring(std::chrono::duration_cast<std::chrono::seconds>(time_now.time_since_epoch()).count());
-
-	// Time since epoch as a normal string
-	const std::string time_since_epoch = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time_now.time_since_epoch()).count());
-
-	//For storage in vector playerList -- to be sent to server
-	const std::string unique_name = name + time_since_epoch;
-
-	// Convert player name to wide string
-	wchar_t* temp = convertStringToWideString(name);
-
-	// We know the mailslot starts with this
-	LPCWSTR mailSlotBeginning = L"\\\\.\\mailslot\\";
-
-	// Full name of mailslot
-	std::wstring w_string_mailslot_name = std::wstring(mailSlotBeginning) + temp + w_time_since_epoch;
-
-	delete[] temp;
+	std::string player_name(argv[1]);
+	Player player = Player(player_name);
 
 	// Convert mailslot name to LPCWSTR
-	LPCWSTR myMailslot = w_string_mailslot_name.c_str();
+	LPCWSTR mailslot_name = convertStringToWideString(player.get_mailslot_name());
 
 	//Create the Mailslot
-	HANDLE clientMailslot = CreateMailslot(
-		myMailslot,		          // The name of our Mailslot
+	HANDLE client_mailslot = CreateMailslot(
+		mailslot_name,		          // The name of our Mailslot
 		BUFFER_LENGTH,            // The size of the input buffer
 		MAILSLOT_WAIT_FOREVER,    // Wait forever for new mail
 		NULL					  // Use the default security attributes
 	);
+	
+	if (client_mailslot == INVALID_HANDLE_VALUE)
+	{
+		printf("There was an error creating the Mailslot: %d\n", GetLastError());
+		return 1;
+	}
 
 	// This will be set when the Event is set
 	volatile bool moribund = false;
 
 	// All pre-event-set tasks for client
-	std::thread t1([&argc, &playerName, &uniqueID, &moribund, &clientMailslot, &unique_name]() {
+	std::thread t1([&argc, &player, &moribund, &client_mailslot]() {
 		if (argc != 2)
 		{
 			printf("Invalid number of arguments. Please provide only a name with no spaces.");
@@ -100,14 +78,8 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 
-		if (clientMailslot == INVALID_HANDLE_VALUE)
-		{
-			printf("There was error creating the Mailslot: %d\n", GetLastError());
-			return 1;
-		}
-
 		// We successfully opened the Mailslot. Send some messages!
-		sprintf(writeBuffer, unique_name.c_str(), playerName);
+		sprintf(writeBuffer, player.get_unique_name().c_str(), player.get_name());
 		size_t bytesToWrite = strlen(writeBuffer) + 1;
 		writeResult = WriteFile(srvMailslot, writeBuffer, bytesToWrite, &bytesWritten, NULL);
 
@@ -120,18 +92,18 @@ int main(int argc, char* argv[])
 
 		CloseHandle(srvMailslot);
 
-		bool readResult = ReadFile(clientMailslot, readBuffer, BUFFER_LENGTH, &bytesRead, NULL);  // No overlapping I/O
+		bool readResult = ReadFile(client_mailslot, readBuffer, BUFFER_LENGTH, &bytesRead, NULL);  // No overlapping I/O
 		if (!readResult || (bytesRead <= 0))
 		{
 			printf("An error occured reading the message: %d\n", GetLastError());
-			CloseHandle(clientMailslot);
+			CloseHandle(client_mailslot);
 			return 1;
 		}
 
 		char* ID = readBuffer;
-		uniqueID = ID[0];
+		player.set_unique_id(ID[0]);
 
-		printf("Unique ID is: %d\n", uniqueID);
+		printf("Unique ID is: %d\n", player.get_unique_id());
 
 		// Open the semaphore we will use to control access. It must have been already created.
 		HANDLE hSemaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, TEXT("SharedMemorySemaphore"));
@@ -215,7 +187,7 @@ int main(int argc, char* argv[])
 				// The buffer is not yet full. Store the datum.
 				else
 				{
-					(&pCircularBuffer->buffer)[pCircularBuffer->head] = uniqueID;
+					(&pCircularBuffer->buffer)[pCircularBuffer->head] = player.get_unique_id();
 					(&pCircularBuffer->buffer)[pCircularBuffer->head + 1] = datum;
 
 					// Update the head of the buffer
@@ -248,7 +220,7 @@ int main(int argc, char* argv[])
 		});
 
 	// Event checking and all post-event-set tasks of client.
-	std::thread t2([&moribund, &uniqueID, &clientMailslot]() {
+	std::thread t2([&moribund, &player, &client_mailslot]() {
 
 		// Open the event
 		HANDLE hEvent = OpenEvent(
@@ -278,17 +250,17 @@ int main(int argc, char* argv[])
 			DWORD bytesRead;
 
 			// Read buffer (should be the unique ID of the winning player in it)
-			bool readResult = ReadFile(clientMailslot, readBuffer, BUFFER_LENGTH, &bytesRead, NULL);  // No overlapping I/O
+			bool readResult = ReadFile(client_mailslot, readBuffer, BUFFER_LENGTH, &bytesRead, NULL);  // No overlapping I/O
 			if (!readResult || (bytesRead <= 0))
 			{
 				printf("An error occured reading the message: %d\n", GetLastError());
-				CloseHandle(clientMailslot);
+				CloseHandle(client_mailslot);
 				return 1;
 			}
 
 			char did_i_win = readBuffer[0];
 
-			if (did_i_win == uniqueID)
+			if (did_i_win == player.get_unique_id())
 			{
 				printf("I won!");
 			}

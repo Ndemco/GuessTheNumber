@@ -141,9 +141,11 @@
   <ItemGroup>
     <ClCompile Include="..\..\Shared\Utils.cpp" />
     <ClCompile Include="Client.cpp" />
+    <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Shared\CircularBuffer.h" />
+    <ClInclude Include="Player.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
