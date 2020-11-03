@@ -1,5 +1,5 @@
 #include <iostream>
-#include "./includes/SharedMemory.h"
+#include "./include/SharedMemory.h"
 
 CircularBuffer* SharedMemory::run(HANDLE hSemaphore)
 {

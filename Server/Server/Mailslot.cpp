@@ -1,6 +1,6 @@
 #include <iostream>
-#include "./includes/Mailslot.h"
-#include "../../Shared/Utils.h"
+#include "./include/Mailslot.h"
+#include "./include/Utils.h"
 
 std::vector<pair_of_strings> Mailslot::getPlayerList()
 {

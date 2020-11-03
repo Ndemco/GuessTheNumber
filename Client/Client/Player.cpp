@@ -1,4 +1,4 @@
-#include "Player.h"
+#include "./include/Player.h"
 
 Player::Player(const std::string name) : name(name), unique_id(unique_id),
 	unique_name(generate_unique_name(name)),

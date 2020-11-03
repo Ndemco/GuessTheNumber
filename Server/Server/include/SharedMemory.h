@@ -2,7 +2,7 @@
 #define SHAREDMEMORY_H
 
 #include <Windows.h>
-#include "../../Shared/CircularBuffer.h"
+#include "./include/CircularBuffer.h"
 
 class SharedMemory
 {

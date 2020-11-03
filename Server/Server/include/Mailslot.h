@@ -3,6 +3,7 @@
 
 #include<Windows.h>
 #include<vector>
+#include <string>
 
 typedef std::pair<std::string, std::string> pair_of_strings;
 

@@ -6,11 +6,11 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "./includes/Event.h"
-#include "./includes/Mailslot.h"
-#include "./includes/SharedMemory.h"
-#include "../../Shared/CircularBuffer.h"
-#include "./includes/ServerUtils.h"
+#include "./include/Event.h"
+#include "./include/Mailslot.h"
+#include "./include/SharedMemory.h"
+#include "./include/CircularBuffer.h"
+#include "./include/ServerUtils.h"
 
 int main()
 {

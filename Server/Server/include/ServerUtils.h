@@ -5,8 +5,8 @@
 #include <iostream>
 #include "Event.h"
 #include "Mailslot.h"
-#include "../../../Shared/Utils.h"
-#include "../../../Shared/CircularBuffer.h"
+#include "./include/Utils.h"
+#include "./include/CircularBuffer.h"
 
 void readGuesses(unsigned char& num, volatile bool& moribund, HANDLE hSemaphore,
 	CircularBuffer* pCircularBuffer, Mailslot* mailslot, HANDLE hEvent)

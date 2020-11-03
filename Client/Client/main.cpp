@@ -9,9 +9,9 @@
 #include <string>
 #include <stdlib.h>
 #include <chrono>
-#include "Player.h"
-#include "../../Shared/CircularBuffer.h"
-#include "../../Shared/Utils.h"
+#include "./include/Player.h"
+#include "./include/CircularBuffer.h"
+#include "./include/Utils.h"
 
 constexpr auto BUFFER_LENGTH = 1024;
 
@@ -150,7 +150,8 @@ int main(int argc, char* argv[])
 			printf("Guess a number between 0 and 255: ");
 			std::cin >> guess;
 
-			//This ensures cin does not have irrecoverable error is g type safety for when setting unsigned char datum == guess
+			//This ensures cin does not have irrecoverable error
+			//and is type safe when setting unsigned char datum == unsigned short guess
 			while (guess < 0 || guess > 255 || (std::cin.fail() && !(std::cin.bad() || std::cin.eof())))
 			{
 				if (guess < 0 || guess > 255)
@@ -167,7 +168,7 @@ int main(int argc, char* argv[])
 				std::cin >> guess;
 			}
 
-			datum = (unsigned char)guess;
+			datum = static_cast<unsigned char>(guess);
 
 			// First get the semaphore. Wait for up to 100 milliseconds.
 			DWORD dwWaitResult = WaitForSingleObject(hSemaphore, 100);
